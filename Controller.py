@@ -4,7 +4,8 @@ import socket
 
 def startController(filepath):
     nameDict, connectionDict = readFile(filepath)
-    socketDict = connectionDict(nameDict)
+    socketDict = connectPeers(nameDict)
+    sendNTU(nameDict, connectionDict, socketDict)
 
 
 def readFile(filepath):
@@ -12,27 +13,47 @@ def readFile(filepath):
     connectionDict = {}  # (name, name) as key, number as value
     f = open(filepath, "r")
     lines = (f.readlines())
-    nodeline = lines[0]
-    nodelist = nodeline.split("|")
-    for node in nodelist:
-        node = node.split(",")
-        nameDict[node[0]] = (node[1], int(node[2]))
+    peers = lines[0]
+    peerlist = peers.split("|")
+    for peer in peerlist:
+        peer = peer.split(",")
+        nameDict[peer[0]] = (peer[1], int(peer[2]))
     for connection in lines[1:]:
         connection = connection.split(",")
         connectionDict[(connection[0], connection[1])] = int(connection[2])
     return nameDict, connectionDict
 
 
-def connectNodes(nameDict):
+def connectPeers(nameDict):
     socketDict = {}  # node names as key, socket as value
     portOffset = 0  # Offset to have different ports, counted up every loop
-    for node in nameDict.keys():
+    for peer in nameDict.keys():
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.bind(("", 8080 + portOffset))  # Bind socket
-        clientSocket.connect(nameDict[node])
-        socketDict[node] = clientSocket
+        clientSocket.connect(nameDict[peer])
+        socketDict[peer] = clientSocket
         portOffset += 1
     return socketDict
+
+
+def sendNTU(nameDict, connectionDict, socketDict):
+    iteration = 0  # Save number of iterations to get last peer to send update information
+    for peer in nameDict.keys():
+        message = peer + "|"
+        for peerPairs in connectionDict.keys():
+            if peerPairs[0] == peer:
+                message = message + peerPairs[1] + "," + nameDict[peerPairs[1]][0] + "," + nameDict[peerPairs[1]][1]
+                message = message + "," + connectionDict[peerPairs] + "|"
+            if peerPairs[1] == peer:
+                message = message + peerPairs[0] + "," + nameDict[peerPairs[0]][0] + "," + nameDict[peerPairs[0]][1]
+                message = message + "," + connectionDict[peerPairs] + "|"
+        iteration += 1
+        if iteration >= len(nameDict):
+            message = message + "-update"
+        else:
+            message = message[:-1]  # Cut off last "|" of all not last peers
+        peerSocket = socketDict[peer]
+        peerSocket.send(message.encode())
 
 
 def main():
