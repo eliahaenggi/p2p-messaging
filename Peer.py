@@ -10,27 +10,16 @@ socketDict = {}  # name as key, socket as value
 
 
 def startPeer(address, port):
-    clientSocket, clientAddress = createControllerSocket(address, port)
-    receiveMessage(clientSocket, clientAddress)
-
-
-def createControllerSocket(address, port):
-    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.bind((address, port))
-    serverSocket.listen()
-    return serverSocket.accept()
-
-
-def receiveMessage(clientSocket, clientAddress):
-    sockets_list = [clientSocket]
+    controllerSocket, controllerAddress = createControllerSocket(address, port)
+    sockets_list = [controllerSocket]
     while True:
         read, write, exception = select.select(sockets_list, [], [])
         for sock in read:
-            if sock == clientSocket:
-                message = clientSocket.recv(BUFSIZE).decode()
+            if sock == controllerSocket:
+                message = controllerSocket.recv(BUFSIZE).decode()
                 if not message:
                     print("Connection closed")
-                    clientSocket.close()
+                    controllerSocket.close()
                 if "|" in message:  # Message from Controller
                     peers = message.split("|")
                     for peer in peers:
@@ -44,6 +33,15 @@ def receiveMessage(clientSocket, clientAddress):
                             connectionDict[peer[0]] = ((peer[1], peer[2]), peer[3])  # Update connection
                 return
         time.sleep(0.01)
+
+
+def createControllerSocket(address, port):
+    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serverSocket.bind((address, port))
+    serverSocket.listen()
+    return serverSocket.accept()
+
+
 
 
 
