@@ -1,0 +1,31 @@
+Messaging between two peers or peer and controller:
+
+First controller sends peers list of all peernames (sendNames):
+Name_of_own_Peer|Other_Peer|Other_Peer|...
+
+Afterwards controller sends peers list of all neighbours (sendNTU):
+Name_of_Neighbour,IP,Port,Costs|Name_of_Neighbour,IP,Port,Costs|...
+Message of last peer contains a |-update at the end to start NU from there.
+
+Peers send NU to other peers:
+TBD
+
+
+Structure of Readfile (read in readFile in Controller.py):
+
+node1,ip,port|node2,ip,port|node3,ip,port|...
+node1,node2,10
+node2,node3,4
+node3,node1,20
+
+
+Dictionaries and Lists:
+
+Controller.py:
+nameDict - name as key, (ip, port) as values
+connectionDict - (name, name) as key, cost as value
+socketDict (in connectToPeers) - name as key, socket as value
+
+Peer.py:
+connectionDict - name as key, ((ip, port), cost) as value
+peerNameList - list of all peer names (from sendNames in Controller.py)
