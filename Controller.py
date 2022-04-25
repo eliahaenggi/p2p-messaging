@@ -4,10 +4,10 @@ import socket
 
 def startController(filepath):
     nameDict, connectionDict = readFile(filepath)
-    socketDict = connectPeers(nameDict)
-    sendNTU(nameDict, connectionDict, socketDict)
+    sendNTU(nameDict, connectionDict)
 
 
+# Should read the input file and save nodes in nameDict and connections in connectionDict
 def readFile(filepath):
     nameDict = {}  # node names as key, (ip, port) as value
     connectionDict = {}  # (name, name) as key, number as value
@@ -24,7 +24,9 @@ def readFile(filepath):
     return nameDict, connectionDict
 
 
-def connectPeers(nameDict):
+# Should first initialize sockets for every peer and afterwards send NTU to every peer. At the end all sockets are
+# closed again
+def sendNTU(nameDict, connectionDict):
     socketDict = {}  # node names as key, socket as value
     portOffset = 0  # Offset to have different ports, counted up every loop
     for peer in nameDict.keys():
@@ -33,10 +35,6 @@ def connectPeers(nameDict):
         clientSocket.connect(nameDict[peer])
         socketDict[peer] = clientSocket
         portOffset += 1
-    return socketDict
-
-
-def sendNTU(nameDict, connectionDict, socketDict):
     iteration = 0  # Save number of iterations to get last peer to send update information
     for peer in nameDict.keys():
         message = peer + "|"
@@ -54,6 +52,7 @@ def sendNTU(nameDict, connectionDict, socketDict):
             message = message[:-1]  # Cut off last "|" of all not last peers
         peerSocket = socketDict[peer]
         peerSocket.send(message.encode())
+        peerSocket.close()
 
 
 def main():
