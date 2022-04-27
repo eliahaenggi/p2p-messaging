@@ -6,6 +6,8 @@ def startController(filepath):
     nameDict, connectionDict = readFile(filepath)
     sendNames(nameDict)
     sendNTU(nameDict, connectionDict)
+    while True:
+        getMessage(nameDict)
 
 
 # Should read the input file and save nodes in nameDict and connections in connectionDict
@@ -55,10 +57,11 @@ def sendNames(nameDict):
         for peers in nameDict.keys():
             if peer != peers:
                 message = message + "|" + peers
-        message = peer + message
+        message = peer + "|" + nameDict[peer][0] + "|" + nameDict[peer][1] + message
         peerSocket = socketDict[peer]
         peerSocket.send(message.encode())
         peerSocket.close()
+
 
 
 # Connect with sockets to all peers, return Dict with all sockets
