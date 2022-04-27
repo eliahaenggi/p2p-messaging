@@ -115,6 +115,16 @@ def setupServerSocket(address, port):
     return serverSocket
 
 
+def getUpdateString():
+    message = peerName + "~"
+    minValue = sys.maxsize
+    for i in range(len(peerNameList)):
+        for j in range(len(connectionDict)):
+            if minValue > forwardingTable[i][j]:
+                minValue = forwardingTable[i][j]
+        message = message + peerNameList[i] + "," + minValue + "~"
+    return message[:-1]
+
 
 def main():
     if len(sys.argv) == 3:

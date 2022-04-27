@@ -63,6 +63,29 @@ def sendNames(nameDict):
         peerSocket.close()
 
 
+def getMessage(nameDict):
+    if "message" == input():
+        sender = input("which peer should send a message?")
+        receiver = input("who should be the receiver?")
+        message = input("what should the message be?")
+        sendMessage(nameDict, sender, receiver, message)
+
+
+def sendMessage(nameDict, sender, receiver, message):
+    if sender not in nameDict.keys():
+        print("Unknown sender")
+        return
+    elif receiver not in nameDict.keys():
+        print("Unknown receiver")
+        return
+    else:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientSocket.bind(("", 8080))
+        clientSocket.connect(nameDict[sender])
+        sendMessage = receiver + "^" + message
+        clientSocket.send(sendMessage.encode())
+        clientSocket.close()
+
 
 # Connect with sockets to all peers, return Dict with all sockets
 def connectToPeers(nameDict):
