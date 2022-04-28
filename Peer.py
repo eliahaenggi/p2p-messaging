@@ -2,28 +2,26 @@ import sys
 import socket
 import select
 import time
-import numpy as np
 
 BUFSIZE = 512
-peerName = ""
+peerName = None
 connectionDict = {}  # Dictionary of connections, name as key, ((ip, port), number) as value
 peerNameList = []
-forwardingTable = np.matrix(1, 1)
+forwardingTable = {}
 ip = None
 port = None
 
-
-def startPeer(address, port):
-    serverSocket = setupServerSocket(address, port)
+def startPeer():
+    global ip, port
+    serverSocket = setupServerSocket()
     while True:
         receiveMessage(serverSocket)
 
 
 # Used to receive NTU's from the controller and NU's from other peers. New socket is used for every message
 def receiveMessage(serverSocket):
-    global forwardingTable, port, ip
+    global forwardingTable, port, ip, peerName
     serverSocket.listen()
-    receivedConnections = False
     clientSocket, clientAddress = serverSocket.accept()
     sockets_list = [clientSocket]
     read, write, exception = select.select(sockets_list, [], [])
@@ -33,75 +31,76 @@ def receiveMessage(serverSocket):
             if not message:
                 print("Connection closed")
                 clientSocket.close()
-            if "|" in message:  # Message from Controller about connection (of the form ...|name,ip,port,number|...)
+
+            # Message from Controller about Peer names or NTU
+            if "|" in message:
                 peers = message.split("|")
                 for peer in peers:
-                    if "-update" in peer:  # -update if peer is last to be informed
+                    if "-n" in peer:
+                        peerName = None
+                        peerNameList.clear()
+                        connectionDict.clear()
+                        forwardingTable.clear()
+                        continue
+                    if "-update" in peer:  # Send update string to all connections
                         updateString = getUpdateString()
-                        for connection in connectionDict:
+                        for connection in connectionDict.keys():
                             updateSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                            updateSocket.bind(ip, port)
-                            updateSocket.connect(connectionDict[connection][0])
+                            updateSocket.connect((connectionDict[connection][0][0], int(connectionDict[connection][0][1])))
                             updateSocket.send(updateString.encode())
+                            print("-updatestring: " + updateString)
                             updateSocket.close()
                         continue
-                    if "," in peer:  # Connection update if message is split with ","
+                    if "," in peer:  # NTU, set connectionDict, set forwardingTable to mac int
                         peer = peer.split(",")
-                        connectionDict[peer[0]] = ((peer[1], peer[2]), peer[3])
-                        receivedConnections = True
+                        connectionDict[peer[0]] = ((peer[1], peer[2]), int(peer[3]))
+                        forwardingTable[peer[0]] = ((peer[1], peer[2]), sys.maxsize)
                     else:
-                        if len(peerNameList) == 0:  # First element of list is own name
+                        if peerName is None:  # List of peer names from the controller, first name is own peer name
                             peerName = peer
-                        elif ip is None:
-                            ip = peer
-                        elif port is None:
-                            port = int(peer)
                         else:
                             peerNameList.append(peer)
-                        receivedNames = True
-            if receivedConnections:
-                forwardingTable = np.matrix(np.ones(len(peerNameList), len(connectionDict)) * sys.maxsize)
-                for connection in connectionDict.keys():
-                    forwardingTable[peerNameList.index(connection)][connectionDict.keys().index(connection)] = \
-                    connectionDict[connection][1]
-                receivedConnections = False
+                            forwardingTable[peer] = ("", sys.maxsize)
+
+            # NU from other peers (Own_Name~Other_Name,Cost~Other_Name,Cost~...)
             if "~" in message:
                 items = message.split("~")
-                name = items[0]
-                connectionIndex = connectionDict.keys().index(items[0])
+                name = items[0]  # peer name of the NU sender
                 items = items[1:]
                 receivedUpdate = False  # Check if forwardingTable is updated
                 for item in items:
                     tokens = item.split(",")
-                    nameIndex = peerNameList.index(tokens[0])
-                    if forwardingTable[nameIndex][connectionIndex] > int(tokens[1]) + connectionDict[name][1]:
-                        forwardingTable[nameIndex][connectionIndex] = int(tokens[1]) + connectionDict[name][1]
+                    if tokens[0] not in forwardingTable.keys():  # Should filter own peer from forwarding table
+                        continue
+                    # Check if there is a better connection to peer
+                    if forwardingTable[tokens[0]][1] > int(tokens[1]) + connectionDict[name][1]:
+                        if tokens[0] not in connectionDict.keys() or connectionDict[tokens[0]][1] > int(tokens[1]) + connectionDict[name][1]:
+                            forwardingTable[tokens[0]] = (connectionDict[name][0], int(tokens[1]) + connectionDict[name][1])
+                        else:
+                            forwardingTable[tokens[0]] = (connectionDict[tokens[0]][0], connectionDict[tokens[0]][1])
                         receivedUpdate = True
-                if receivedUpdate:  # Send updates only if updates received
+                if receivedUpdate:  # Send own connections to other peers only if forwardingTable updated
                     updateString = getUpdateString()
                     for connection in connectionDict:
                         updateSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        updateSocket.bind(ip, port)
-                        updateSocket.connect(connectionDict[connection][0])
+                        updateSocket.connect((connectionDict[connection][0][0], int(connectionDict[connection][0][1])))
                         updateSocket.send(updateString.encode())
+                        print("Send Update: " + updateString)
                         updateSocket.close()
-            if "^" in message:  # Received message
+
+            # Received Message from peer or controller (Receiver_of_the_Message^Message)
+            if "^" in message:
                 oldMessage = message
                 message = message.split("^")
-                print(peerName + " received: " + message[1])
+                # Check if message already is at target peer
                 if message[0] == peerName:
-                    print("Message received: " + message[1])
+                    print("Message reached target: " + message[1])
                     return
-                nameIndex = peerNameList.index(message[0])
-                bestConnection = None
-                minValue = sys.maxsize
-                for i in range(len(connectionDict)):
-                    if forwardingTable[nameIndex][i] < minValue:  #if there is another connection that is as small, then we take the one that was first detected.
-                        minValue = forwardingTable[nameIndex][i]
-                        bestConnection = connectionDict.keys()[i]
                 sendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sendSocket.bind(ip, port)
-                sendSocket.connect(connectionDict[bestConnection][0])
+                # Send message to address in forwardingTable
+                address = (forwardingTable[message[0]][0][0], forwardingTable[message[0]][0][1])
+                sendSocket.connect((address[0], int(address[1])))
+                print(peerName + " is forwarding the message to " + str(address))
                 sendSocket.send(oldMessage.encode())
                 sendSocket.close()
             clientSocket.close()
@@ -109,28 +108,31 @@ def receiveMessage(serverSocket):
     time.sleep(0.01)
 
 
-def setupServerSocket(address, port):
+def setupServerSocket():
+    global ip, port, portNum
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serverSocket.bind((address, port))
+    serverSocket.bind((ip, port))
     return serverSocket
 
 
+# Create String to send as NU (Own_Peer_Name~Other_Peer_Name,Cost~Other_Peer_Name,Cost~...)
 def getUpdateString():
     message = peerName + "~"
-    minValue = sys.maxsize
-    for i in range(len(peerNameList)):
-        for j in range(len(connectionDict)):
-            if minValue > forwardingTable[i][j]:
-                minValue = forwardingTable[i][j]
-        message = message + peerNameList[i] + "," + minValue + "~"
+    for peer in forwardingTable.keys():
+        value = forwardingTable[peer][1]
+        if peer in connectionDict.keys():
+            if int(connectionDict[peer][1]) < int(forwardingTable[peer][1]):
+                value = connectionDict[peer][1]
+        message = message + peer + "," + str(value) + "~"
     return message[:-1]
 
 
 def main():
+    global ip, port
     if len(sys.argv) == 3:
-        address = sys.argv[1]
+        ip = sys.argv[1]
         port = int(sys.argv[2])
-        startPeer(address, port)
+        startPeer()
     else:
         print("Error, wrong arguments")
 

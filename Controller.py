@@ -2,12 +2,9 @@ import sys
 import socket
 
 
-def startController(filepath):
-    nameDict, connectionDict = readFile(filepath)
-    sendNames(nameDict)
-    sendNTU(nameDict, connectionDict)
+def startController():
     while True:
-        getMessage(nameDict)
+        getMessages()
 
 
 # Should read the input file and save nodes in nameDict and connections in connectionDict
@@ -32,19 +29,21 @@ def sendNTU(nameDict, connectionDict):
     socketDict = connectToPeers(nameDict)
     iteration = 0  # Save number of iterations to get last peer to send update information
     for peer in nameDict.keys():
+        message = ""
         for peerPairs in connectionDict.keys():
             if peerPairs[0] == peer:
-                message = message + peerPairs[1] + "," + nameDict[peerPairs[1]][0] + "," + nameDict[peerPairs[1]][1]
-                message = message + "," + connectionDict[peerPairs] + "|"
+                message = message + peerPairs[1] + "," + nameDict[peerPairs[1]][0] + "," + str(nameDict[peerPairs[1]][1])
+                message = message + "," + str(connectionDict[peerPairs]) + "|"
             if peerPairs[1] == peer:
-                message = message + peerPairs[0] + "," + nameDict[peerPairs[0]][0] + "," + nameDict[peerPairs[0]][1]
-                message = message + "," + connectionDict[peerPairs] + "|"
+                message = message + peerPairs[0] + "," + nameDict[peerPairs[0]][0] + "," + str(nameDict[peerPairs[0]][1])
+                message = message + "," + str(connectionDict[peerPairs]) + "|"
         iteration += 1
         if iteration >= len(nameDict):
             message = message + "-update"
         else:
             message = message[:-1]  # Cut off last "|" of messages if peer is not last peer
         peerSocket = socketDict[peer]
+        print("[Controller:] " + message + "\n")
         peerSocket.send(message.encode())
         peerSocket.close()
 
@@ -52,26 +51,33 @@ def sendNTU(nameDict, connectionDict):
 # Sends list of all peer names. First name is the name of the own peer
 def sendNames(nameDict):
     socketDict = connectToPeers(nameDict)
-    message = ""
     for peer in nameDict.keys():
+        message = ""
         for peers in nameDict.keys():
             if peer != peers:
                 message = message + "|" + peers
-        message = peer + "|" + nameDict[peer][0] + "|" + nameDict[peer][1] + message
+        message = "-n|" + peer + message
         peerSocket = socketDict[peer]
+        print("[Controller:] " + message + "\n")
         peerSocket.send(message.encode())
         peerSocket.close()
 
 
-def getMessage(nameDict):
-    if "message" == input():
-        sender = input("which peer should send a message?")
-        receiver = input("who should be the receiver?")
-        message = input("what should the message be?")
+def getMessages():
+    if "-f" in input():
+        filepath = input("Enter the filepath:\n")
+        nameDict, connectionDict = readFile(filepath)
+        sendNames(nameDict)
+        sendNTU(nameDict,connectionDict)
+    if "-m" == input():
+        sender = input("which peer should send a message?\n")
+        receiver = input("who should be the receiver?\n")
+        message = input("what should the message be?\n")
         sendMessage(nameDict, sender, receiver, message)
 
 
 def sendMessage(nameDict, sender, receiver, message):
+    global portNum
     if sender not in nameDict.keys():
         print("Unknown sender")
         return
@@ -80,9 +86,9 @@ def sendMessage(nameDict, sender, receiver, message):
         return
     else:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        clientSocket.bind(("", 8080))
         clientSocket.connect(nameDict[sender])
         sendMessage = receiver + "^" + message
+        print("[Controller:] " + sendMessage + "\n")
         clientSocket.send(sendMessage.encode())
         clientSocket.close()
 
@@ -93,7 +99,6 @@ def connectToPeers(nameDict):
     portOffset = 0  # Offset to have different ports, counted up every loop
     for peer in nameDict.keys():
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        clientSocket.bind(("", 8080 + portOffset))  # Bind socket
         clientSocket.connect(nameDict[peer])
         socketDict[peer] = clientSocket
         portOffset += 1
@@ -101,9 +106,8 @@ def connectToPeers(nameDict):
 
 
 def main():
-    if len(sys.argv) == 2:
-        filepath = sys.argv[1]
-        startController(filepath)
+    if len(sys.argv) == 1:
+        startController()
     else:
         print("Error, wrong arguments")
 
