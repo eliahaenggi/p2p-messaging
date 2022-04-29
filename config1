@@ -1,0 +1,13 @@
+node1,192.168.0.161,9000|node2,192.168.0.161,9001|node3,192.168.0.161,9002|node4,192.168.0.161,9003|node5,192.168.0.161,9004|node6,192.168.0.161,9005|node7,192.168.0.161,9006|node8,192.168.0.161,9007|node9,192.168.0.161,9008
+node1,node2,5
+node2,node5,2
+node3,node1,2
+node3,node5,2
+node2,node4,5
+node4,node7,5
+node7,node8,2
+node8,node9,1
+node6,node9,2
+node6,node8,1
+node4,node6,1
+node4,node8,2
