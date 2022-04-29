@@ -1,6 +1,9 @@
 import sys
 import socket
 
+nameDict = {}
+connectionDict = {}
+
 
 def startController():
     while True:
@@ -64,12 +67,13 @@ def sendNames(nameDict):
 
 
 def getMessages():
-    if "-f" in input():
+    global nameDict, connectionDict
+    if "-f" in input("Write -f to specify a filepath, then write -m to specify a message:\n"):
         filepath = input("Enter the filepath:\n")
         nameDict, connectionDict = readFile(filepath)
         sendNames(nameDict)
         sendNTU(nameDict,connectionDict)
-    if "-m" == input():
+    if "-m" in input("Write -f to specify a filepath, then write -m to specify a message:\n"):
         sender = input("which peer should send a message?\n")
         receiver = input("who should be the receiver?\n")
         message = input("what should the message be?\n")
@@ -77,7 +81,6 @@ def getMessages():
 
 
 def sendMessage(nameDict, sender, receiver, message):
-    global portNum
     if sender not in nameDict.keys():
         print("Unknown sender")
         return

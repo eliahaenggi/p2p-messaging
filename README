@@ -2,10 +2,12 @@ Messaging between two peers or peer and controller:
 
 First controller sends peers list of all peernames (sendNames):
 -n|Name_of_own_Peer|IP|Port|Other_Peer|Other_Peer|...
+The -n Command at the start of the message signals the peers that this is a new NTU by the controller.
+Therefore all list and dictionaries of all peers get cleared.
 
 Afterwards controller sends peers list of all neighbours (sendNTU):
 Name_of_Neighbour,IP,Port,Costs|Name_of_Neighbour,IP,Port,Costs|...
-Message of last peer contains a |-update at the end to start NU from there.
+The Message of the last peer contains a -update at the end. After receiving this command
 
 Peers send NU to other peers:
 Own_Peer_Name~Other_Peer_Name,Cost~Other_Peer_Name,Cost~...

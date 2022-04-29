@@ -5,20 +5,19 @@ import time
 
 BUFSIZE = 512
 peerName = None
-connectionDict = {}  # Dictionary of connections, name as key, ((ip, port), number) as value
-peerNameList = []
-forwardingTable = {}
-ip = None
-port = None
+connectionDict = {}  # Dictionary of connections, name as key, ((ip, port), cost) as value
+peerNameList = []  # List of all peers (excluding the own)
+forwardingTable = {}  # forwardingTable as dictonary, target peer name as key, ((ip, port), cost) as value
+ip = None  # Specified as argument
+port = None  # Specified as argument
 
 def startPeer():
-    global ip, port
     serverSocket = setupServerSocket()
     while True:
         receiveMessage(serverSocket)
 
 
-# Used to receive NTU's from the controller and NU's from other peers. New socket is used for every message
+# Used to receive NTU's from the controller and NU's from other peers. New socket is used for every message.
 def receiveMessage(serverSocket):
     global forwardingTable, port, ip, peerName
     serverSocket.listen()
@@ -121,6 +120,7 @@ def getUpdateString():
     for peer in forwardingTable.keys():
         value = forwardingTable[peer][1]
         if peer in connectionDict.keys():
+            # Take the connection cost if its smaller than the value in the forwardingTable
             if int(connectionDict[peer][1]) < int(forwardingTable[peer][1]):
                 value = connectionDict[peer][1]
         message = message + peer + "," + str(value) + "~"
