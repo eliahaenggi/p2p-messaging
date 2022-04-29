@@ -43,8 +43,6 @@ def sendNTU(nameDict, connectionDict):
         iteration += 1
         if iteration >= len(nameDict):
             message = message + "-update"
-        else:
-            message = message[:-1]  # Cut off last "|" of messages if peer is not last peer
         peerSocket = socketDict[peer]
         print("[Controller:] " + message + "\n")
         peerSocket.send(message.encode())

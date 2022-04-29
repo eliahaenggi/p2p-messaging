@@ -10,6 +10,7 @@ peerNameList = []  # List of all peers (excluding the own)
 forwardingTable = {}  # forwardingTable as dictonary, target peer name as key, ((ip, port), cost) as value
 ip = None  # Specified as argument
 port = None  # Specified as argument
+firstUpdate = True
 
 def startPeer():
     serverSocket = setupServerSocket()
@@ -19,7 +20,7 @@ def startPeer():
 
 # Used to receive NTU's from the controller and NU's from other peers. New socket is used for every message.
 def receiveMessage(serverSocket):
-    global forwardingTable, port, ip, peerName
+    global forwardingTable, port, ip, peerName, firstUpdate
     serverSocket.listen()
     clientSocket, clientAddress = serverSocket.accept()
     sockets_list = [clientSocket]
@@ -34,7 +35,10 @@ def receiveMessage(serverSocket):
             # Message from Controller about Peer names or NTU
             if "|" in message:
                 peers = message.split("|")
+                print(message)
                 for peer in peers:
+                    if "" == peer:
+                        continue
                     if "-n" in peer:
                         peerName = None
                         peerNameList.clear()
@@ -66,6 +70,9 @@ def receiveMessage(serverSocket):
                 items = message.split("~")
                 name = items[0]  # peer name of the NU sender
                 items = items[1:]
+                if name not in connectionDict.keys():
+                    print("Error, peer received update from unknown peer")
+                    continue
                 receivedUpdate = False  # Check if forwardingTable is updated
                 for item in items:
                     tokens = item.split(",")
@@ -73,13 +80,14 @@ def receiveMessage(serverSocket):
                         continue
                     # Check if there is a better connection to peer
                     if forwardingTable[tokens[0]][1] > int(tokens[1]) + connectionDict[name][1]:
-                        if tokens[0] not in connectionDict.keys() or connectionDict[tokens[0]][1] > int(tokens[1]) + connectionDict[name][1]:
-                            forwardingTable[tokens[0]] = (connectionDict[name][0], int(tokens[1]) + connectionDict[name][1])
-                        else:
+                        if tokens[0]  in connectionDict.keys() and connectionDict[tokens[0]][1] < int(tokens[1]) + connectionDict[name][1]:
                             forwardingTable[tokens[0]] = (connectionDict[tokens[0]][0], connectionDict[tokens[0]][1])
+                        else:
+                            forwardingTable[tokens[0]] = (connectionDict[name][0], int(tokens[1]) + connectionDict[name][1])
                         receivedUpdate = True
-                if receivedUpdate:  # Send own connections to other peers only if forwardingTable updated
+                if receivedUpdate or firstUpdate:  # Send own connections to other peers only if forwardingTable updated
                     updateString = getUpdateString()
+                    firstUpdate = False
                     for connection in connectionDict:
                         updateSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         updateSocket.connect((connectionDict[connection][0][0], int(connectionDict[connection][0][1])))
