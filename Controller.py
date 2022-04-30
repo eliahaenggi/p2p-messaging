@@ -5,10 +5,11 @@ nameDict = {}
 connectionDict = {}
 
 
-def startController():
-    while True:
-        getMessages()
-
+def startController(filepath, sender, receiver, message):
+    nameDict, connectionDict = readFile(filepath)
+    sendNames(nameDict)
+    sendNTU(nameDict,connectionDict)
+    sendMessage(nameDict, sender, receiver, message)
 
 # Should read the input file and save nodes in nameDict and connections in connectionDict
 def readFile(filepath):
@@ -64,27 +65,13 @@ def sendNames(nameDict):
         peerSocket.close()
 
 
-def getMessages():
-    global nameDict, connectionDict
-    if "-f" in input("Write -f to specify a filepath, then write -m to specify a message:\n"):
-        filepath = input("Enter the filepath:\n")
-        nameDict, connectionDict = readFile(filepath)
-        sendNames(nameDict)
-        sendNTU(nameDict,connectionDict)
-    if "-m" in input("Write -f to specify a filepath, then write -m to specify a message:\n"):
-        sender = input("which peer should send a message?\n")
-        receiver = input("who should be the receiver?\n")
-        message = input("what should the message be?\n")
-        sendMessage(nameDict, sender, receiver, message)
-
-
 def sendMessage(nameDict, sender, receiver, message):
     if sender not in nameDict.keys():
         print("Unknown sender")
-        return
+        exit()
     elif receiver not in nameDict.keys():
         print("Unknown receiver")
-        return
+        exit()
     else:
         clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientSocket.connect(nameDict[sender])
@@ -92,6 +79,7 @@ def sendMessage(nameDict, sender, receiver, message):
         print("[Controller:] " + sendMessage + "\n")
         clientSocket.send(sendMessage.encode())
         clientSocket.close()
+        exit()
 
 
 # Connect with sockets to all peers, return Dict with all sockets
@@ -107,8 +95,12 @@ def connectToPeers(nameDict):
 
 
 def main():
-    if len(sys.argv) == 1:
-        startController()
+    if len(sys.argv) == 5:
+        filepath = sys.argv[1]
+        sender = sys.argv[2]
+        receiver = sys.argv[3]
+        message = sys.argv[4]
+        startController(filepath, sender, receiver, message)
     else:
         print("Error, wrong arguments")
 

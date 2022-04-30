@@ -7,7 +7,7 @@ BUFSIZE = 512
 peerName = None
 connectionDict = {}  # Dictionary of connections, name as key, ((ip, port), cost) as value
 peerNameList = []  # List of all peers (excluding the own)
-forwardingTable = {}  # forwardingTable as dictonary, target peer name as key, ((ip, port), cost) as value
+forwardingTable = {}  # forwardingTable as dictionary, target peer name as key, ((ip, port), cost) as value
 ip = None  # Specified as argument
 port = None  # Specified as argument
 firstUpdate = True
@@ -44,6 +44,7 @@ def receiveMessage(serverSocket):
                         peerNameList.clear()
                         connectionDict.clear()
                         forwardingTable.clear()
+                        firstUpdate = True
                         continue
                     if "-update" in peer:  # Send update string to all connections
                         updateString = getUpdateString()
@@ -80,7 +81,7 @@ def receiveMessage(serverSocket):
                         continue
                     # Check if there is a better connection to peer
                     if forwardingTable[tokens[0]][1] > int(tokens[1]) + connectionDict[name][1]:
-                        if tokens[0]  in connectionDict.keys() and connectionDict[tokens[0]][1] < int(tokens[1]) + connectionDict[name][1]:
+                        if tokens[0] in connectionDict.keys() and connectionDict[tokens[0]][1] < int(tokens[1]) + connectionDict[name][1]:
                             forwardingTable[tokens[0]] = (connectionDict[tokens[0]][0], connectionDict[tokens[0]][1])
                         else:
                             forwardingTable[tokens[0]] = (connectionDict[name][0], int(tokens[1]) + connectionDict[name][1])
