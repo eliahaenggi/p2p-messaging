@@ -117,7 +117,7 @@ def receiveMessage(serverSocket):
 
 
 def setupServerSocket():
-    global ip, port, portNum
+    global ip, port
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.bind((ip, port))
     return serverSocket
