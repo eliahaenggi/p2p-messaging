@@ -1,36 +1,53 @@
-Messaging between two peers or peer and controller:
+# P2P Messaging Tool in Python
 
-First controller sends peers list of all peernames (sendNames):
--n|Name_of_own_Peer|IP|Port|Other_Peer|Other_Peer|...
-The -n Command at the start of the message signals the peers that this is a new NTU by the controller.
-Therefore all list and dictionaries of all peers get cleared.
+A simple peer-to-peer messaging system allowing communication between peers or between a peer and a controller, with dynamic topology updates and cost-based routing.
 
-Afterwards controller sends peers list of all neighbours (sendNTU):
-Name_of_Neighbour,IP,Port,Costs|Name_of_Neighbour,IP,Port,Costs|...
-The Message of the last peer contains a -update at the end. After receiving this command
+---
 
-Peers send NU to other peers:
-Own_Peer_Name~Other_Peer_Name,Cost~Other_Peer_Name,Cost~...
+## Features
+- Peer-to-peer and peer-to-controller messaging
+- Dynamic network topology updates
+- Cost-based message routing
 
-Peer or Controller sends message to forward:
-Receiver_of_Message^Message
+---
 
+## Implementation
 
-Structure of Readfile (read in readFile in Controller.py):
-
+### Controller
+- Reads network topology from a **readfile**:
 node1,ip,port|node2,ip,port|node3,ip,port|...
 node1,node2,10
 node2,node3,4
 node3,node1,20
 
+- Maintains:
+  - `nameDict`: peer → (IP, port)
+  - `connectionDict`: (peer1, peer2) → cost
+  - `socketDict`: peer → socket
 
-Dictionaries and Lists:
+- Sends peer list to all peers (`sendNames`):
+-n|OwnPeer|IP|Port|OtherPeer|...
+- Sends neighbor lists (`sendNTU`) with `-update` at the last message
 
-Controller.py:
-nameDict - name as key, (ip, port) as values
-connectionDict - (name, name) as key, cost as value
-socketDict (in connectToPeers) - name as key, socket as value
+### Peer
+- Maintains:
+  - `connectionDict`: peer → ((IP, port), cost)
+  - `peerNameList`: all peers
+- Sends updates (NU):
+OwnPeerOtherPeer,CostOtherPeer,Cost~...
 
-Peer.py:
-connectionDict - name as key, ((ip, port), cost) as value
-peerNameList - list of all peer names (from sendNames in Controller.py)
+- Message forwarding format:
+Receiver^Message
+
+---
+
+## Usage
+1. Start **Controller.py** with the readfile.
+2. Start each **Peer.py** with its name and port.
+3. Peers exchange updates and forward messages automatically.
+
+---
+
+## Notes
+- Text-based protocol uses `-n` for new topology and `-update` to signal completion.
+- Cost values are used for routing messages efficiently.
